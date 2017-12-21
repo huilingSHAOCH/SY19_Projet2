@@ -256,6 +256,9 @@ On obtient l'erreur 0.22.
 Donc le classifieur obtenu par lda est le meilleur pour data_expressions.
 
 #2 Données characters_train.txt
+
+Comme nous disposons d'un grand nombre d'observations (1000) comparé au nombre de variables (17), il ne nous parait pas nécessaire de procéder à une réduction de dimension. Nous partageons simplement les données en un ensemble de test comportant un quart des données et un ensemble d'apprentissage composé des données restantes. 
+
 ```{r}
 #Generate train data and test data
 data<-data_characters
@@ -289,8 +292,14 @@ for (i in (1:10)){
 }
 plot(nbvoisin,error,xlab="Nombre de voisin pris pour apprentissage",ylab="Erreur estimée")
 ```
+Nous obtenons, par cross validation, une erreur minimale de 0.0784. Elle correspond cependant à 1 seul voisin. Il y a donc probablement trop de dimensions pour pouvoir appliquer cette méthode car on tombe dans l'overfitting.
 
 
+##2.2 Analyse Discriminante
+
+Nous regarderons dans un premier temps les résultats des classifieurs obtenus par analyse discriminante linéaire et quadratique et du classifieur Bayésien naïf. Nous chercherons ensuite un modèle optimal en appliquant le principe de régularisation .
+
+###2.2.1 LDA
 ```{r}
 lda_data<- lda(Y~.,data=train)
 pred<-predict(lda_data,newdata=test)
@@ -300,31 +309,146 @@ error<-1-sum(diag(table))/nTst
 error
 ```
 
+Nous obtenons un taux d'erreur de 0.3. Un classifieur offrant une frontière linéaire ne semble donc pas adapté.
 
-
-#3 Données parole_train.txt
+###2.2.2 QDA
 ```{r}
-#Generate train data and test data
-data<-data_parole
-set.seed(2000)
-
-#Generate train data and test data
-N<-nrow(data)
-nTrain=floor(3/4*N)
-nTst=N-nTrain
-
-trainIdx<-sample(1:N, nTrain)
-train<-data[trainIdx,]
-test<-data[-trainIdx,]
-```
-
-
-```{r}
-lda_data<- lda(y~.,data=train)
-pred<-predict(lda_data,newdata=test)
-table<-table(test$y,pred$class)
+qda_data<- qda(Y~.,data=train)
+pred<-predict(qda_data,newdata=test)
+table<-table(test$Y,pred$class)
 table
 error<-1-sum(diag(table))/nTst
 error
 ```
+Nous obtenons un taux d'erreur de 0.12. Il est relativement faible : la qda donne donc de bon résultats. Cela était prévisible puisque nous possédons un grand nombre d'observations. On peut également désuire que nos données posèdent un bruit faible.
+
+###2.2.3 Classifieur Bayésien naif
+
+```{r}
+library(klaR)
+
+naivB_data<-NaiveBayes(Y~.,data=train)
+pred<-predict(naivB_data,newdata=test)
+table<-table(test$Y,pred$class)
+table
+error<-1-sum(diag(table))/nTst
+error
+```
+Nous obtenons un taux d'erreur de 0.36. Ce dernier est donc moins bon que celui obtenu avec la QDA (0.12)
+
+###2.2.4 Analyse discriminante régularisée
+```{r}
+rda_data <- rda(Y~.,data=train, crossval = TRUE)
+pred<-predict(rda_data,newdata=test)
+table<-table(test$Y,pred$class)
+table
+error<-1-sum(diag(table))/nTst
+error
+```
+
+Le taux d'erreur est 0.12. Il est relativement proche de celui obtenu avec la QDA. On peut donc penser que la régularisation a favorisé une matrice de covariance propre à chaque classe.
+
+##2.3 Mixture Discriminant Analysis
+
+```{r}
+library(mclust)
+ind_y = 1
+MclustDa_data <- MclustDA(train[,(ind_y+1):ncol(train)],train[,ind_y])
+
+#general covariance structure selected by BIC
+summary(MclustDa_data, newdata = test[,(ind_y+1):ncol(train)], newclass = test[,ind_y])
+```
+
+Nous obtenons de bon résultats : une erreur d'apprentissage de 0.03 et une erreur de test de 0.08. Ce classifieur est donc meilleur que celui obtenu par QDA. On peut donc déduire que la distribution des données à l'intérieur des classes se rapproche plus d'un mélange de Gausiennes que d'une seule.
+
+
+##2.5 Arbres
+
+###2.5.1 Arbre de décision
+```{r}
+#install.packages("tree")
+library(tree)
+
+#Full tree
+tree_data = tree(as.factor(Y)~., train)
+plot(tree_data)
+text(tree_data, pretty = 0)
+
+#Cross validation
+size<-cv.tree(tree_data)$size
+DEV<-rep(0, length(size))
+
+for (i in (1:10)) 
+{
+  cv_data = cv.tree(tree_data)
+  DEV<-DEV+cv_data$dev
+}
+
+DEV <- DEV/10
+
+plot(cv_data$size, DEV, type = 'b')
+
+#Pruning
+prune_data = prune.tree(tree_data, best = 17)
+plot(prune_data)
+text(prune_data, pretty = 0)
+
+#Test Error
+y_pred = predict(prune_data, newdata = test, type = 'class')
+table<-table(y_pred, test$Y)
+table
+error<-1-sum(diag(table))/nTst
+error
+```
+Nous obtenons la plus petite erreur, par cross validation, pour un arbre non élagué : on fait donc probablement du surapprentissage.
+Cela est confirmé par une erreur de test élevée : 0.63. Cette erreur n'est donc pas acceptable. 
+
+###2.5.2 Bagging
+```{r}
+#install.packages("randomForest")
+library(randomForest)
+#m =p = 5
+bag_data = randomForest(Y~., data=train, mtry=5)
+ypred = predict(bag_data, newdata=test, type = 'response')
+table<-table(ypred, test$Y)
+error<-1-sum(diag(table))/nTst
+error
+```
+On obtient l'erreur 0.0588. Elle est donc nettement meilleure que celle obtenue auparavant avec l'arbre.
+
+###2.5.3 Random Forest
+```{r}
+#m = sqrt(p) = p/2 
+rdForest_data = randomForest(Y~., data=train,mtry=4)
+ypred = predict(rdForest_data, newdata=test, type = 'response')
+table<-table(ypred, test$Y)
+error<-1-sum(diag(table))/nTst
+error
+```
+
+On obtient l'erreur 0.0576. Ici on prend mtry = sqrt(p) = 4.
+C'est jusqu'a maintenant le meilleur résultat obtenu.
+
+
+##2.6 Support Vector Machine
+
+```{r}
+#install.packages("e1071")
+library(e1071)
+
+#Kernel = radial
+tune.out = tune(svm, Y~., data = train, kernel = "radial", range = list(cost=c(0.01, 0.1, 1, 10, 100), gamma = c(0.1, 1, 10)))
+summary(tune.out)
+
+svm_data<-svm(Y~., data = train, kernel = "radial", gamma = 0.1, cost = 1)
+ypred = predict(svm_data, newdata=test)
+table<-table(ypred, test$Y)
+table
+error<-1-sum(diag(table))/nTst
+error
+```
+
+On obtient l'erreur 
+
+Donc le classifieur obtenu par  est le meilleur pour data_expressions.
 
