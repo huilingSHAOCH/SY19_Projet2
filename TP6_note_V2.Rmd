@@ -5,12 +5,14 @@ output:
   html_notebook: default
   pdf_document: default
 ---
+
 Ce TP a pour but de proposer les meilleurs prédicteurs possibles pour traiter le problème de classification des données : 
-- expression_train.txt contenant les niveaux de gris d’une image associés a une expression du visage parmi joie, surprise, tristesse, dégoût, colère, peur;
-- characters_train.txt composé d’exemples issus de 26 classes correspondant aux 26 lettres de l’alphabet;
+- expression_train.txt, contenant les niveaux de gris d’une image associés a une expression du visage parmi joie, surprise, tristesse, dégoût, colère, peur;
+- characters_train.txt, composé d’exemples issus de 26 classes correspondant aux 26 lettres de l’alphabet;
 - parole_train.txt, dont chaque observation correspond à prononciation d’un phonème parmi "sh", "dcl", "iy", "aa" et "ao" 
 
 Nous allons donc comparer sur ces jeu de données des qualités de prévision de plusieurs modèles.
+
 
 ```{r}
 data_expressions<-read.table("expressions_train.txt")
@@ -19,6 +21,7 @@ data_parole<-read.table("parole_train.txt")
 ```
 
 #1 Données expression_train.txt
+
 ```{r}
 #Generate train data and test data
 data<-data_expressions
@@ -35,38 +38,44 @@ test<-data[-trainIdx,]
 ```
 
 La suite du travail nécessite un échantillon d’apprentissage pour estimer les modèles et un échantillon de test pour comparer les erreurs de prévision.
-
 Nous séparons donc le jeu de données en un ensemble de test comportant un quart des données et un ensemble d'apprentissage composé des données restantes. 
 
-Nous remarquons un certain nombre de problèmes sur ce jeu de données. Donc il faut effectuer le data cleaning : 
+Nous remarquons un certain nombre de problèmes sur ce jeu de données. 
 
-Tout d'abord, il existe des colonnes entièrement nulles qui génèrent des erreurs lors de l'aplication méthodes d'apprentissage. Il s'agit des prédicteurs correspodant aux coins au bas des images. Nous avons donc choisi de supprimer ces derniers. 
+Tout d'abord, il existe des colonnes entièrement nulles qui génèrent des erreurs lors de l'aplication méthodes d'apprentissage. Il s'agit des prédicteurs correspondant aux coins au bas des images. Nous avons donc choisi de supprimer ces derniers puisqu'ils n'apportent aucune information. De plus, les images sont similaires (même cadrage du visage, ...) : les variables de ce jeu de données sont donc fortement corrélées. 
 
-De plus, les images sont similaires (même cadrage du visage) : les variables de ce jeu de données sont donc fortement corrélées. Il y a également un très grand nombre de prédicteurs comparé au nombre d'observations. Nous allons donc effectuer une réduction de dimension par FDA.
+Il y a également un très grand nombre de prédicteurs comparé au nombre d'observations. Nous avons donc choisit d'effectuer une réduction de dimension par FDA.
+
 
 ```{r}
 #Remove column full of 0
-cleanData<-data[,colSums(abs(data[,1:ncol(data)-1])) !=0]
-trainIdx<-sample(1:N, nTrain)
-train<-cleanData[trainIdx,]
-test<-cleanData[-trainIdx,]
+cleanData.train<-train[,colSums(abs(train[,1:ncol(train)-1])) !=0]
+cleanData.test<-test[,colSums(abs(test[,1:ncol(test)-1])) !=0]
 
-#FDA A CALCULER QUE POUR DONNEES TRAIN 
+#FDA (with train data)
 library("MASS")
-lda_data<- lda(y~.,data=cleanData)
+lda_data<- lda(y~.,data=cleanData.train) 
 U<-lda_data$scaling
-X<-as.matrix(cleanData[,1:ncol(cleanData)-1])
+X<-as.matrix(cleanData.train[,1:ncol(cleanData.train)-1])
 Z<-X%*%U
 Z<-as.data.frame(Z)
-y<-data$y
-Z<-cbind(Z,y)
+y<-cleanData.train$y
+trainFDA<-cbind(Z,y)
 
-#Generate train data and test data
-trainIdx<-sample(1:N, nTrain)
-trainFDA<-Z[trainIdx,]
-testFDA<-Z[-trainIdx,]
+#Apply FDA on test data
+X<-as.matrix(cleanData.test[,1:ncol(cleanData.test)-1])
+Z<-X%*%U
+Z<-as.data.frame(Z)
+y<-cleanData.test$y
+testFDA<-cbind(Z,y)
+
+#Plot
+plot(trainFDA[,1], trainFDA[,2], col = trainFDA$y)
+
 ```
+
 ##1.1 K plus proches voisins
+
 ```{r}
 library(class)
 train.X <- trainFDA[,1:ncol(trainFDA)-1]
@@ -84,9 +93,11 @@ for (i in (1:10)){
 plot(nbvoisin,error,xlab="Nombre de voisin pris pour apprentissage",ylab="Erreur estimée")
 ```
 
-Selon le graph, on obtient l'erreur minimale 0.03703704 quand k = 7. En fait la méthode k plus proches voisins est une méthode non paramétrique et la donnée expressions a un grand nombre de prédicteurs mais peu de observations. Donc pour éviter le phénomène overfitting, il faut prendre une valeur relativement grande pour k (ici 7).
+Selon le graphique, on obtient l'erreur minimale de 0.18 quand k = 6. La méthode des K plus proches voisins a généralement de mauvais résultats en grande dimension puisque les voisins se retrouve en réalité très loin (fléau de la dimension). Le fait d'avoir effectué au préalable une réduction de dimension a permis d'obtenir de bons résultats, donc une bonne génératlisation et pas d'overfitting.
 
 ##1.2 Analyse Discriminante
+
+Nous regarderons dans un premier temps les résultats des classifieurs obtenus par analyse discriminante linéaire et quadratique et du classifieur Bayésien naïf. Nous chercherons ensuite un modèle optimal en appliquant le principe de régularisation .
 
 ###1.2.1 LDA
 ```{r}
@@ -98,7 +109,7 @@ error<-1-sum(diag(table))/nTst
 error
 ```
 
-On obtient l'erreur 0.07407407.
+Nous obtenons un taux d'erreur de 0.14. Des frontières linéaires donnent donc un résultat satisfaisant.
 
 ###1.2.2 QDA
 ```{r}
@@ -109,7 +120,7 @@ table
 error<-1-sum(diag(table))/nTst
 error
 ```
-On obtient l'erreur 0.07407407. L'erreur estimée de QDA et LDA sont les mêmes. C'est à dire que les matrices de covariance de chaque class sont similaires.
+Nous obtenons un taux d'erreur très élevé : 0.40. Ce classifieur est probablement trop flexible pour nos données, il est donc à exclure.
 
 ###1.2.3 Classifieur Bayésien naif
 
@@ -123,7 +134,7 @@ table
 error<-1-sum(diag(table))/nTst
 error
 ```
-On obtient l'erreur 0.07407407 qui est la même que l'erreur précédente. En fait LDA est une amélioration de Bayésien naif méthode avec plus de flexibilité. Si l'erreur de BN est la même que l'erreur de LDA, on peut déduire que les matrices de covariances de chaque class sont similaires et diagonales.
+Nous obtenons un taux d'erreur de 0.25. Ce dernier est donc moins bon que celui obtenu avec la LDA (0.14)
 
 ###1.2.4 Analyse discriminante régularisée
 ```{r}
@@ -135,7 +146,7 @@ error<-1-sum(diag(table))/nTst
 error
 ```
 
-L'erreur est toujours 0.07407407. L'erreur de régularisation entre LDA et QDA reste la même parce que l'erreurs de QDA et LDA sont les mêmes.
+Le taux d'erreur est 0.18. Il est relativement proche de celui obtenu avec la LDA.
 
 ##1.3 Régression Logistique (GLM & GAM)
 
@@ -152,7 +163,7 @@ summary(MclustDa_data, newdata = testFDA[,1:ind_y-1], newclass = testFDA[,ind_y]
 ```
 Le summary nous montre le nombre de clusters (G) et le modèle Parsimonious (Model) dans chaque class en utilisant la méthode de modèle de sélection (critère BIC).
 
-On obtient l'erreur 0.2222222 qui est relativemen grande par rapport aux erreurs précédentes. Ici on constate que le MSE training est 0 qui est inférieur à l'erreur de Bayes (erreur irréductible pour MSE test). Donc on peut déduire que l'erreur est grande à cause de overfitting.
+Malgré une erreur d'apprentissage nulle, l'erreur de test est extrêmement élevée (0.62). Ce modèle, comme la QDA, colle donc probablement beaucoup trop au données d'apprentissage (surapprentissage). Il faut donc privilégier pour ces données des classifieurs plus simples qui vont pouvoir extraire des tendances plus générales.
 
 ##1.5 Arbres
 
@@ -193,7 +204,7 @@ error<-1-sum(diag(table))/nTst
 error
 ```
 
-On obtient l'erreur 0.1481481.
+L'erreur obtenue est 0.44. Elle n'est pas acceptable. Nous allons tenter de l'améliorer en utilisant les méthodes de Bagging et de Random Forest. 
 
 ###1.5.2 Bagging
 ```{r}
@@ -206,7 +217,7 @@ table<-table(ypred, testFDA$y)
 error<-1-sum(diag(table))/nTst
 error
 ```
-On obtient l'erreur 0.1111111.
+On obtient l'erreur 0.29.
 
 ###1.5.3 Random Forest
 ```{r}
@@ -218,7 +229,9 @@ error<-1-sum(diag(table))/nTst
 error
 ```
 
-On obtient l'erreur 0.07407407. Ici on prend mtry = sqrt(p) = p/2 = 2.
+On obtient l'erreur 0.29. Ici on prend mtry = sqrt(p) = p/2 = 2.
+
+Les erreurs obtenues par bagging et random forest sont plus faibles que celle obtenue initialement par l'arbre. Néanmoins, ces classifieurs n'égalent pas l'analyse discriminante linéaire.
 
 ##1.6 Support Vector Machine
 
@@ -238,8 +251,79 @@ error<-1-sum(diag(table))/nTst
 error
 ```
 
-On obtient l'erreur 0.07407407.
+On obtient l'erreur 0.22.
 
-Donc le clssifier K plus proches voisins est le meilleur pour data_expressions.
+Donc le classifieur obtenu par lda est le meilleur pour data_expressions.
+
+#2 Données characters_train.txt
+```{r}
+#Generate train data and test data
+data<-data_characters
+set.seed(2000)
+
+#Generate train data and test data
+N<-nrow(data)
+nTrain=floor(3/4*N)
+nTst=N-nTrain
+
+trainIdx<-sample(1:N, nTrain)
+train<-data[trainIdx,]
+test<-data[-trainIdx,]
+```
+
+##2.1 K plus proches voisins
+```{r}
+library(class)
+idx_y = 1
+train.X <- train[,(idx_y+1):ncol(train)]
+train.Y <- train[,idx_y]
+test.X <- test[,(idx_y+1):ncol(test)]
+test.Y <- test[,idx_y]
+
+nbvoisin <- seq(1,10) 
+error <- rep(1:10)
+for (i in (1:10)){
+  knn.pred=knn(train.X,test.X,train.Y,k=i)
+  table(knn.pred,test.Y)
+  error[i] <- 1 - mean(knn.pred == test.Y)
+}
+plot(nbvoisin,error,xlab="Nombre de voisin pris pour apprentissage",ylab="Erreur estimée")
+```
 
 
+```{r}
+lda_data<- lda(Y~.,data=train)
+pred<-predict(lda_data,newdata=test)
+table<-table(test$Y,pred$class)
+table
+error<-1-sum(diag(table))/nTst
+error
+```
+
+
+
+#3 Données parole_train.txt
+```{r}
+#Generate train data and test data
+data<-data_parole
+set.seed(2000)
+
+#Generate train data and test data
+N<-nrow(data)
+nTrain=floor(3/4*N)
+nTst=N-nTrain
+
+trainIdx<-sample(1:N, nTrain)
+train<-data[trainIdx,]
+test<-data[-trainIdx,]
+```
+
+
+```{r}
+lda_data<- lda(y~.,data=train)
+pred<-predict(lda_data,newdata=test)
+table<-table(test$y,pred$class)
+table
+error<-1-sum(diag(table))/nTst
+error
+```
