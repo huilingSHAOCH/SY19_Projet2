@@ -44,27 +44,32 @@ Tout d'abord, il existe des colonnes entièrement nulles qui génèrent des erre
 
 De plus, les images sont similaires (même cadrage du visage) : les variables de ce jeu de données sont donc fortement corrélées. Il y a également un très grand nombre de prédicteurs comparé au nombre d'observations. Nous allons donc effectuer une réduction de dimension par FDA.
 
+
 ```{r}
 #Remove column full of 0
-cleanData<-data[,colSums(abs(data[,1:ncol(data)-1])) !=0]
-trainIdx<-sample(1:N, nTrain)
-train<-cleanData[trainIdx,]
-test<-cleanData[-trainIdx,]
+cleanData.train<-train[,colSums(abs(train[,1:ncol(train)-1])) !=0]
+cleanData.test<-test[,colSums(abs(test[,1:ncol(test)-1])) !=0]
 
-#FDA A CALCULER QUE POUR DONNEES TRAIN 
+#FDA (with train data)
 library("MASS")
-lda_data<- lda(y~.,data=cleanData)
+lda_data<- lda(y~.,data=cleanData.train) 
 U<-lda_data$scaling
-X<-as.matrix(cleanData[,1:ncol(cleanData)-1])
+X<-as.matrix(cleanData.train[,1:ncol(cleanData.train)-1])
 Z<-X%*%U
 Z<-as.data.frame(Z)
-y<-data$y
-Z<-cbind(Z,y)
+y<-cleanData.train$y
+trainFDA<-cbind(Z,y)
 
-#Generate train data and test data
-trainIdx<-sample(1:N, nTrain)
-trainFDA<-Z[trainIdx,]
-testFDA<-Z[-trainIdx,]
+#Apply FDA on test data
+X<-as.matrix(cleanData.test[,1:ncol(cleanData.test)-1])
+Z<-X%*%U
+Z<-as.data.frame(Z)
+y<-cleanData.test$y
+testFDA<-cbind(Z,y)
+
+#Plot
+plot(trainFDA[,1], trainFDA[,2], col = trainFDA$y)
+
 ```
 ##1.1 K plus proches voisins
 ```{r}
@@ -84,7 +89,7 @@ for (i in (1:10)){
 plot(nbvoisin,error,xlab="Nombre de voisin pris pour apprentissage",ylab="Erreur estimée")
 ```
 
-Selon le graph, on obtient l'erreur minimale 0.03703704 quand k = 7. En fait la méthode k plus proches voisins est une méthode non paramétrique et la donnée expressions a un grand nombre de prédicteurs mais peu de observations. Donc pour éviter le phénomène overfitting, il faut prendre une valeur relativement grande pour k (ici 7).
+Selon le graph, on obtient l'erreur minimale 0.1851852 quand k = 6. En fait la méthode k plus proches voisins est une méthode non paramétrique et la donnée expressions a un grand nombre de prédicteurs mais peu de observations. Donc pour éviter le phénomène overfitting, il faut prendre une valeur relativement grande pour k (ici 6).
 
 ##1.2 Analyse Discriminante
 
@@ -98,7 +103,7 @@ error<-1-sum(diag(table))/nTst
 error
 ```
 
-On obtient l'erreur 0.07407407.
+On obtient l'erreur 0.1481481.
 
 ###1.2.2 QDA
 ```{r}
@@ -109,7 +114,7 @@ table
 error<-1-sum(diag(table))/nTst
 error
 ```
-On obtient l'erreur 0.07407407. L'erreur estimée de QDA et LDA sont les mêmes. C'est à dire que les matrices de covariance de chaque class sont similaires.
+On obtient l'erreur 0.4074074. 
 
 ###1.2.3 Classifieur Bayésien naif
 
