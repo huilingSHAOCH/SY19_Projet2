@@ -452,3 +452,56 @@ On obtient l'erreur
 
 Donc le classifieur obtenu par  est le meilleur pour data_expressions.
 
+# 3 Données parole_train.txt
+
+Ici on n'est pas sûr s'il faut appliquer FDA pour les données. Donc on compare les erreurs estimées de QDA sans FDA et avec FDA : 
+```{r sans FDA}
+#Generate train data and test data
+data<-data_parole
+set.seed(2000)
+
+#Generate train data and test data
+N<-nrow(data)
+nTrain=floor(3/4*N)
+nTst=N-nTrain
+
+trainIdx<-sample(1:N, nTrain)
+train<-data[trainIdx,]
+test<-data[-trainIdx,]
+
+qda_data<- qda(y~.,data=train)
+pred<-predict(qda_data,newdata=test)
+table<-table(test$y,pred$class)
+error<-1-sum(diag(table))/nTst
+error
+#0.39
+```
+
+
+```{r avec FDA}
+#FDA (with train data)
+library("MASS")
+lda_data<- lda(y~.,data=train) 
+U<-lda_data$scaling
+X<-as.matrix(train[,1:ncol(train)-1])
+Z<-X%*%U
+Z<-as.data.frame(Z)
+y<-train$y
+trainFDA<-cbind(Z,y)
+
+#Apply FDA on test data
+X<-as.matrix(test[,1:ncol(test)-1])
+Z<-X%*%U
+Z<-as.data.frame(Z)
+y<-test$y
+testFDA<-cbind(Z,y)
+
+qda_data<- qda(y~.,data=trainFDA)
+pred<-predict(qda_data,newdata=testFDA)
+table<-table(testFDA$y,pred$class)
+error<-1-sum(diag(table))/nTst
+error
+#0.08
+```
+
+L'erreur avec FDA (0.08) est beaucoup plus petite que l'erreur sans FDA (0.39). Donc il faut appliquer FDA sur notre donnée.
