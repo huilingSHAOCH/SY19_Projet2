@@ -163,7 +163,7 @@ summary(MclustDa_data, newdata = testFDA[,1:ind_y-1], newclass = testFDA[,ind_y]
 ```
 Le summary nous montre le nombre de clusters (G) et le modèle Parsimonious (Model) dans chaque class en utilisant la méthode de modèle de sélection (critère BIC).
 
-Malgré une erreur d'apprentissage nulle, l'erreur de test est extrêmement élevée (0.62). Ce modèle, comme la QDA, colle donc probablement beaucoup trop au données d'apprentissage (surapprentissage). Il faut donc privilégier pour ces données des classifieurs plus simples qui vont pouvoir extraire des tendances plus générales.
+Malgré une erreur d'apprentissage nulle, l'erreur de test est extrêmement élevée (0.59). Ce modèle, comme la QDA, colle donc probablement beaucoup trop au données d'apprentissage (surapprentissage). Il faut donc privilégier pour ces données des classifieurs plus simples qui vont pouvoir extraire des tendances plus générales.
 
 ##1.5 Arbres
 
