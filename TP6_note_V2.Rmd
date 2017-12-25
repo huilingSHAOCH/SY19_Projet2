@@ -1,9 +1,13 @@
 ---
 title: Apprentissage à partir de 3 jeux de données réels
+author: Lucie BECHERI & Huiling SHAO
+fontsize: 4pt
 output:
+  pdf_document:
+    fig_width: 7
+    fig_height: 3
   html_document: default
   html_notebook: default
-  pdf_document: default
 ---
 
 Ce TP a pour but de proposer les meilleurs prédicteurs possibles pour traiter le problème de classification des données : 
@@ -14,7 +18,7 @@ Ce TP a pour but de proposer les meilleurs prédicteurs possibles pour traiter l
 Nous allons donc comparer sur ces jeux de données des qualités de prévision de plusieurs modèles.
 
 
-```{r}
+```{r echo=FALSE}
 data_expressions<-read.table("expressions_train.txt")
 data_characters<-read.table("characters_train.txt")
 data_parole<-read.table("parole_train.txt")
@@ -22,7 +26,7 @@ data_parole<-read.table("parole_train.txt")
 
 #1 Données expression_train.txt
 
-```{r}
+```{r echo=FALSE}
 #Generate train data and test data
 data<-data_expressions
 set.seed(2000)
@@ -47,7 +51,7 @@ Tout d'abord, il existe des colonnes entièrement nulles qui génèrent des erre
 Il y a également un très grand nombre de prédicteurs comparé au nombre d'observations. Nous avons donc choisi d'effectuer une réduction de dimension par FDA.
 
 
-```{r}
+```{r message=FALSE, warning=FALSE,fig.height=3}
 #Remove column full of 0
 cleanData.train<-train[,colSums(abs(train[,1:ncol(train)-1])) !=0]
 cleanData.test<-test[,colSums(abs(test[,1:ncol(test)-1])) !=0]
@@ -68,15 +72,11 @@ Z<-X%*%U
 Z<-as.data.frame(Z)
 y<-cleanData.test$y
 testFDA<-cbind(Z,y)
-
-#Plot
-plot(trainFDA[,1], trainFDA[,2], col = trainFDA$y)
-
 ```
 
 ##1.1 K plus proches voisins
 
-```{r}
+```{r echo = FALSE,fig.height=3}
 library(class)
 train.X <- trainFDA[,1:ncol(trainFDA)-1]
 train.Y <- trainFDA[,ncol(trainFDA)]
@@ -100,53 +100,44 @@ Selon le graphique, on obtient l'erreur minimale de 0.18 quand k = 6. La méthod
 Nous regarderons dans un premier temps les résultats des classifieurs obtenus par analyse discriminante linéaire et quadratique et du classifieur Bayésien naïf. Nous chercherons ensuite un modèle optimal en appliquant le principe de régularisation.
 
 ###1.2.1 LDA
-```{r}
+```{r message=FALSE, warning=FALSE,eval=FALSE}
 lda_data<- lda(y~.,data=trainFDA)
 pred<-predict(lda_data,newdata=testFDA)
 table<-table(testFDA$y,pred$class)
-table
 error<-1-sum(diag(table))/nTst
-error
 ```
 
 Nous obtenons un taux d'erreur de test de 0.14. Des frontières linéaires donnent donc un résultat satisfaisant.
 
 ###1.2.2 QDA
-```{r}
+```{r  message=FALSE, warning=FALSE,eval=FALSE}
 qda_data<- qda(y~.,data=trainFDA)
 pred<-predict(qda_data,newdata=testFDA)
 table<-table(testFDA$y,pred$class)
-table
 error<-1-sum(diag(table))/nTst
-error
 ```
 Nous obtenons un taux d'erreur de test très élevé : 0.40. Ce classifieur est probablement trop flexible pour nos données, il est donc à exclure.
 
 ###1.2.3 Classifieur Bayésien naif
 
-```{r}
+```{r  message=FALSE, warning=FALSE,eval=FALSE}
 library(klaR)
-
 naivB_data<-NaiveBayes(y~.,data=trainFDA)
 pred<-predict(naivB_data,newdata=testFDA)
 table<-table(testFDA$y,pred$class)
-table
 error<-1-sum(diag(table))/nTst
-error
 ```
-Nous obtenons un taux d'erreur de 0.25. Ce dernier est donc moins bon que celui obtenu avec la LDA (0.14)
+Nous obtenons un taux d'erreur de 0.25. Ce dernier est donc moins bon que celui obtenu avec la LDA (0.14).
 
 ###1.2.4 Analyse discriminante régularisée
-```{r}
+```{r  message=FALSE, warning=FALSE,eval=FALSE}
 rda_data <- rda(y~.,data=trainFDA, crossval = TRUE)
 pred<-predict(rda_data,newdata=testFDA)
 table<-table(testFDA$y,pred$class)
-table
 error<-1-sum(diag(table))/nTst
-error
 ```
 
-Le taux d'erreur est 0.18. Il est relativement proche de celui obtenu avec la LDA.
+Le taux d'erreur est 0.18. Il est relativement proche de celui obtenu avec la LDA. Son erreur est comprise entre l'erreur de LDA(0.14) et QDA(0.4). Ceci est normal puisque Analyse discriminante régularisée est une régularisation entre LDA et QDA.
 
 ##1.3 Régression Logistique et modèles additifs généralisés (GLM & GAM)
 
@@ -158,7 +149,7 @@ De ce fait ces méthodes ne seront pas non plus utilisées pour les jeux de donn
 
 ##1.4 Mixture Discriminant Analysis
 
-```{r}
+```{r  message=FALSE, warning=FALSE,eval=FALSE}
 library(mclust)
 ind_y = 6
 MclustDa_data <- MclustDA(trainFDA[,1:ind_y-1],trainFDA[,ind_y])
@@ -172,13 +163,13 @@ Malgré une erreur d'apprentissage nulle, l'erreur de test est extrêmement éle
 ##1.5 Arbres
 
 ###1.5.1 Arbre de décision
-```{r}
+```{r fig.height=3}
 #install.packages("tree")
 library(tree)
 #Full tree
 tree_data = tree(as.factor(y)~., trainFDA)
-plot(tree_data)
-text(tree_data, pretty = 0)
+#plot(tree_data)
+#text(tree_data, pretty = 0)
 
 #Cross validation
 size<-cv.tree(tree_data)$size
@@ -193,24 +184,23 @@ for (i in (1:10))
 DEV <- DEV/10
 
 plot(cv_data$size, DEV, type = 'b')
-
+```
+```{r}
 #Pruning
 prune_data = prune.tree(tree_data, best = 7)
-plot(prune_data)
-text(prune_data, pretty = 0)
+#plot(prune_data)
+#text(prune_data, pretty = 0)
 
 #Test Error
 y_pred = predict(prune_data, newdata = testFDA, type = 'class')
 table<-table(y_pred, testFDA$y)
-table
 error<-1-sum(diag(table))/nTst
-error
 ```
 
 L'erreur obtenue est 0.44. Elle n'est pas acceptable. Nous allons tenter de l'améliorer en utilisant les méthodes de Bagging et de Random Forest. 
 
 ###1.5.2 Bagging
-```{r}
+```{r  message=FALSE, warning=FALSE,eval=FALSE}
 #install.packages("randomForest")
 library(randomForest)
 #m =p = 5
@@ -218,18 +208,16 @@ bag_data = randomForest(y~., data=trainFDA, mtry=5)
 ypred = predict(bag_data, newdata=testFDA, type = 'response')
 table<-table(ypred, testFDA$y)
 error<-1-sum(diag(table))/nTst
-error
 ```
 On obtient l'erreur 0.29.
 
 ###1.5.3 Random Forest
-```{r}
+```{r  message=FALSE, warning=FALSE,eval=FALSE}
 #m = sqrt(p) = p/2 
 rdForest_data = randomForest(y~., data=trainFDA,mtry=2)
 ypred = predict(rdForest_data, newdata=testFDA, type = 'response')
 table<-table(ypred, testFDA$y)
 error<-1-sum(diag(table))/nTst
-error
 ```
 
 On obtient l'erreur 0.29. Ici on prend mtry = sqrt(p) = p/2 = 2.
@@ -238,31 +226,31 @@ Les erreurs obtenues par bagging et random forest sont plus faibles que celle ob
 
 ##1.6 Support Vector Machine
 
-```{r}
+```{r  message=FALSE, warning=FALSE,eval=FALSE}
 #install.packages("e1071")
 library(e1071)
-
 #Kernel = radial
-tune.out = tune(svm, y~., data = trainFDA, kernel = "radial", range = list(cost=c(0.01, 0.1, 1, 10, 100), gamma = c(0.1, 1, 10)))
+tune.out = tune(svm, y~., data = trainFDA, kernel = "radial", 
+                range = list(cost=c(0.01, 0.1, 1, 10, 100), 
+                             gamma = c(0.1, 1, 10)))
 summary(tune.out)
-
 svm_data<-svm(y~., data = trainFDA, kernel = "radial", gamma = 0.1, cost = 1)
 ypred = predict(svm_data, newdata=testFDA)
 table<-table(ypred, testFDA$y)
-table
 error<-1-sum(diag(table))/nTst
-error
 ```
 
 On obtient l'erreur 0.22.
 
 Le classifieur obtenu par LDA est donc le meilleur pour "expressions".
 
+Pour les données suivantes, nous ne préciserons plus les codes pour calculer les test erreurs en raison de la contrainte sur la taille de rapport.
+
 #2 Données characters_train.txt
 
 Comme nous disposons d'un grand nombre d'observations (1000) et d'un nombre de variables relativement petit (17), il ne nous parait pas nécessaire de procéder à une réduction de dimension. Nous partageons simplement les données en un ensemble de test comportant un quart des données et un ensemble d'apprentissage composé des données restantes. 
 
-```{r}
+```{r  message=FALSE, warning=FALSE,echo=FALSE}
 #Generate train data and test data
 data<-data_characters
 set.seed(2000)
@@ -278,7 +266,7 @@ test<-data[-trainIdx,]
 ```
 
 ##2.1 K plus proches voisins
-```{r}
+```{r echo = FALSE,fig.height=3}
 library(class)
 idx_y = 1
 train.X <- train[,(idx_y+1):ncol(train)]
@@ -295,69 +283,50 @@ for (i in (1:10)){
 }
 plot(nbvoisin,error,xlab="Nombre de voisin pris pour apprentissage",ylab="Erreur estimée")
 ```
-Nous obtenons, par cross validation, une erreur minimale de 0.0784. Elle correspond cependant à 1 seul voisin. Il y a donc probablement trop de dimensions pour pouvoir appliquer cette méthode car on tombe dans l'overfitting.
-
+Nous obtenons, par cross validation, une erreur minimale de 0.0784. Elle correspond cependant à 1 seul voisin. Pour les data_characteurs on a 17 prédicteurs et 10000 obsercations (p<<N). Donc c'est normal que la méthode avec plus de flexibilité (k = 1) est plus performante.
 
 ##2.2 Analyse Discriminante
 
 Nous regarderons dans un premier temps les résultats des classifieurs obtenus par analyse discriminante linéaire et quadratique et du classifieur Bayésien naïf. Nous chercherons ensuite un modèle optimal en appliquant le principe de régularisation .
 
 ###2.2.1 LDA
-```{r}
+```{r  message=FALSE, warning=FALSE,eval=FALSE}
 lda_data<- lda(Y~.,data=train)
 pred<-predict(lda_data,newdata=test)
-table<-table(test$Y,pred$class)
-table
-error<-1-sum(diag(table))/nTst
-error
 ```
 
 Nous obtenons un taux d'erreur de 0.3. Un classifieur offrant une frontière linéaire ne semble donc pas adapté.
 
 ###2.2.2 QDA
-```{r}
+```{r  message=FALSE, warning=FALSE,eval=FALSE}
 qda_data<- qda(Y~.,data=train)
 pred<-predict(qda_data,newdata=test)
-table<-table(test$Y,pred$class)
-table
-error<-1-sum(diag(table))/nTst
-error
 ```
 Nous obtenons un taux d'erreur de 0.12. Il est relativement faible : la QDA donne donc de bon résultats. Cela était prévisible puisque nous possédons un grand nombre d'observations. On peut également déduire que nos données posèdent un bruit assez faible.
 
 ###2.2.3 Classifieur Bayésien naif
 
-```{r}
+```{r  message=FALSE, warning=FALSE,eval=FALSE}
 library(klaR)
-
 naivB_data<-NaiveBayes(Y~.,data=train)
 pred<-predict(naivB_data,newdata=test)
-table<-table(test$Y,pred$class)
-table
-error<-1-sum(diag(table))/nTst
-error
 ```
 Nous obtenons un taux d'erreur de 0.36. Ce dernier est donc moins bon que celui obtenu avec la QDA (0.12)
 
 ###2.2.4 Analyse discriminante régularisée
-```{r}
+```{r  message=FALSE, warning=FALSE,eval=FALSE}
 rda_data <- rda(Y~.,data=train, crossval = TRUE)
 pred<-predict(rda_data,newdata=test)
-table<-table(test$Y,pred$class)
-table
-error<-1-sum(diag(table))/nTst
-error
 ```
 
 Le taux d'erreur de test est de 0.12. Il est relativement proche de celui obtenu avec la QDA. On peut donc penser que la régularisation a favorisé une matrice de covariance propre à chaque classe.
 
 ##2.3 Mixture Discriminant Analysis
 
-```{r}
+```{r  message=FALSE, warning=FALSE,eval=FALSE}
 library(mclust)
 ind_y = 1
 MclustDa_data <- MclustDA(train[,(ind_y+1):ncol(train)],train[,ind_y])
-
 #general covariance structure selected by BIC
 summary(MclustDa_data, newdata = test[,(ind_y+1):ncol(train)], newclass = test[,ind_y])
 ```
@@ -368,14 +337,13 @@ Nous obtenons de bon résultats : une erreur d'apprentissage de 0.03 et une erre
 ##2.5 Arbres
 
 ###2.5.1 Arbre de décision
-```{r}
+```{r fig.height=3}
 #install.packages("tree")
 library(tree)
-
 #Full tree
 tree_data = tree(as.factor(Y)~., train)
-plot(tree_data)
-text(tree_data, pretty = 0)
+#plot(tree_data)
+#text(tree_data, pretty = 0)
 
 #Cross validation
 size<-cv.tree(tree_data)$size
@@ -390,68 +358,42 @@ for (i in (1:10))
 DEV <- DEV/10
 
 plot(cv_data$size, DEV, type = 'b')
-
+```
+```{r}
 #Pruning
 prune_data = prune.tree(tree_data, best = 17)
-plot(prune_data)
-text(prune_data, pretty = 0)
-
-#Test Error
+#plot(prune_data)
+#text(prune_data, pretty = 0)
 y_pred = predict(prune_data, newdata = test, type = 'class')
-table<-table(y_pred, test$Y)
-table
-error<-1-sum(diag(table))/nTst
-error
 ```
 Nous obtenons la plus petite erreur, par cross validation, pour un arbre non élagué : on fait donc probablement du surapprentissage.
+
 Cela est confirmé par une erreur de test élevée : 0.63. Cette erreur n'est donc pas acceptable. 
 
 ###2.5.2 Bagging
-```{r}
+```{r  message=FALSE, warning=FALSE,eval=FALSE}
 #install.packages("randomForest")
 library(randomForest)
-#m =p = 5
-bag_data = randomForest(Y~., data=train, mtry=5)
+#m =p = 16
+bag_data = randomForest(Y~., data=train, mtry=16)
 ypred = predict(bag_data, newdata=test, type = 'response')
-table<-table(ypred, test$Y)
-error<-1-sum(diag(table))/nTst
-error
 ```
-On obtient l'erreur de test 0.0588. Elle est donc nettement meilleure que celle obtenue auparavant.
+On obtient l'erreur de test 0.0756. Elle est donc nettement meilleure que celle obtenue auparavant.
 
 ###2.5.3 Random Forest
-```{r}
-#m = sqrt(p) = p/2 
+```{r  message=FALSE, warning=FALSE,eval=FALSE}
+#m = sqrt(p)
 rdForest_data = randomForest(Y~., data=train,mtry=4)
 ypred = predict(rdForest_data, newdata=test, type = 'response')
-table<-table(ypred, test$Y)
-error<-1-sum(diag(table))/nTst
-error
 ```
 
-On obtient l'erreur de test 0.0576. Ici on prend mtry = sqrt(p) = 4.
+On obtient l'erreur de test 0.058. Ici on prend mtry = sqrt(p) = 4.
 C'est jusqu'a maintenant le meilleur résultat obtenu, même si celui du bagging en est extrêment proche.
 
 
 ##2.6 Support Vector Machine
 
-```{r}
-#install.packages("e1071")
-library(e1071)
-
-#Kernel = radial
-tune.out = tune(svm, Y~., data = train, kernel = "radial", range = list(cost=c(0.01, 0.1, 1, 10, 100), gamma = c(0.1, 1, 10)))
-summary(tune.out)
-
-svm_data<-svm(Y~., data = train, kernel = "radial", gamma = 0.1, cost = 1)
-ypred = predict(svm_data, newdata=test)
-table<-table(ypred, test$Y)
-table
-error<-1-sum(diag(table))/nTst
-error
-```
-
-On obtient l'erreur ????? => trop long : je n'ai pas pu run la fonction tune suffisamment longtemps pour obtenir un résultat.
+L'execution de la fonction tune est trop longue. On n'a pas pu run la fonction tune suffisamment longtemps pour obtenir un résultat.
 
 Donc le classifieur obtenu par Random Forest est le meilleur pour "characters".
 
@@ -460,8 +402,8 @@ Donc le classifieur obtenu par Random Forest est le meilleur pour "characters".
 Le jeu de données possède 257 variables. Afin de savoir s'il est préférable de procéder à une réduction de dimension nous allons comparer les erreurs de test d'un modèle estimé avec un traitement préalable par FDA des données et sans.
 Pour la QDA, l'amélioration est flagrante :
  
-```{r sans FDA}
-#Generate train data and test data
+```{r message=FALSE, warning=FALSE,echo=FALSE}
+#Generate train data and test data without FDA
 data<-data_parole
 set.seed(2000)
 
@@ -479,12 +421,13 @@ qda_data<- qda(y~.,data=train)
 pred<-predict(qda_data,newdata=test)
 table<-table(test$y,pred$class)
 error<-1-sum(diag(table))/nTst
+print('Erreur sans FDA')
 error
 #0.39
 ```
 
 
-```{r avec FDA}
+```{r message=FALSE, warning=FALSE,echo=FALSE}
 #FDA (with train data)
 library("MASS")
 lda_data<- lda(y~.,data=train) 
@@ -506,6 +449,7 @@ qda_data<- qda(y~.,data=trainFDA)
 pred<-predict(qda_data,newdata=testFDA)
 table<-table(testFDA$y,pred$class)
 error<-1-sum(diag(table))/nTst
+print('Erreur avec FDA')
 error
 #0.08
 ```
@@ -515,7 +459,7 @@ L'erreur avec FDA (0.08) est significativement plus petite que l'erreur sans FDA
 
 ##3.1 K plus proches voisins
 
-```{r}
+```{r echo = FALSE, fig.height=3}
 library(class)
 train.X <- trainFDA[,1:ncol(trainFDA)-1]
 train.Y <- trainFDA[,ncol(trainFDA)]
@@ -539,50 +483,35 @@ Selon le graphique, on obtient l'erreur minimale de 0.078 quand k = 6.
 Nous regarderons dans un premier temps les résultats des classifieurs obtenus par analyse discriminante linéaire et quadratique et du classifieur Bayésien naïf. Nous chercherons ensuite un modèle optimal en appliquant le principe de régularisation .
 
 ###3.2.1 LDA
-```{r}
+```{r  message=FALSE, warning=FALSE,eval=FALSE}
 lda_data<- lda(y~.,data=trainFDA)
 pred<-predict(lda_data,newdata=testFDA)
-table<-table(testFDA$y,pred$class)
-table
-error<-1-sum(diag(table))/nTst
-error
 ```
 
 Nous obtenons un taux d'erreur de 0.078. Des frontières linéaires donnent donc un résultat satisfaisant.
 
 ###3.2.2 QDA
-```{r}
+```{r  message=FALSE, warning=FALSE,eval=FALSE}
 qda_data<- qda(y~.,data=trainFDA)
 pred<-predict(qda_data,newdata=testFDA)
-table<-table(testFDA$y,pred$class)
-table
-error<-1-sum(diag(table))/nTst
-error
 ```
 Nous obtenons un taux d'erreur de 0.08.
 
 ###3.2.3 Classifieur Bayésien naif
 
-```{r}
+```{r  message=FALSE, warning=FALSE,eval=FALSE}
 library(klaR)
-
 naivB_data<-NaiveBayes(y~.,data=trainFDA)
 pred<-predict(naivB_data,newdata=testFDA)
-table<-table(testFDA$y,pred$class)
-table
-error<-1-sum(diag(table))/nTst
-error
 ```
 Nous obtenons un taux d'erreur de 0.07. 
 
+L'erreurs de QDA, LDA et Bayésien naif sont très proches. Donc on peut déduire que les matrices de covariance de chaque class sont similaires et diagonales.
+
 ###3.2.4 Analyse discriminante régularisée
-```{r}
+```{r  message=FALSE, warning=FALSE,eval=FALSE}
 rda_data <- rda(y~.,data=trainFDA, crossval = TRUE)
 pred<-predict(rda_data,newdata=testFDA)
-table<-table(testFDA$y,pred$class)
-table
-error<-1-sum(diag(table))/nTst
-error
 ```
 
 Le taux d'erreur est 0.07. 
@@ -592,7 +521,7 @@ Les différentes méthodes d'analyse discriminantes donnent donc des erreurs de 
 
 ##3.3 Mixture Discriminant Analysis
 
-```{r}
+```{r  message=FALSE, warning=FALSE,eval=FALSE}
 library(mclust)
 ind_y = 5
 MclustDa_data <- MclustDA(trainFDA[,1:ind_y-1],trainFDA[,ind_y])
@@ -605,14 +534,14 @@ L'erreur d'apprentissage est de 0.04, l'erreur de test de 0.08. Ce modèle donne
 ##3.4 Arbres
 
 ###3.4.1 Arbre de décision
-```{r}
+```{r fig.height=3}
 #install.packages("tree")
 library(tree)
 
 #Full tree
 tree_data = tree(as.factor(y)~., trainFDA)
-plot(tree_data)
-text(tree_data, pretty = 0)
+#plot(tree_data)
+#text(tree_data, pretty = 0)
 
 #Cross validation
 size<-cv.tree(tree_data)$size
@@ -627,43 +556,33 @@ for (i in (1:10))
 DEV <- DEV/10
 
 plot(cv_data$size, DEV, type = 'b')
-
+```
+```{r}
 #Pruning
 prune_data = prune.tree(tree_data, best = 6)
-plot(prune_data)
-text(prune_data, pretty = 0)
+#plot(prune_data)
+#text(prune_data, pretty = 0)
 
-#Test Error
 y_pred = predict(prune_data, newdata = testFDA, type = 'class')
-table<-table(y_pred, testFDA$y)
-table
-error<-1-sum(diag(table))/nTst
-error
 ```
 
 L'erreur de test obtenue est 0.087. Elle est plutôt faible et est obtenue sans élaguage pour 6 feuilles. Cela est probablement lié au fait que l'on ait effectué une réduction de dimension, ce qui limite la complexite de l'arbre initial.
 
 ###3.4.2 Bagging
-```{r}
+```{r  message=FALSE, warning=FALSE,eval=FALSE}
 #install.packages("randomForest")
 library(randomForest)
 #m =p = 4
 bag_data = randomForest(y~., data=trainFDA, mtry=4)
 ypred = predict(bag_data, newdata=testFDA, type = 'response')
-table<-table(ypred, testFDA$y)
-error<-1-sum(diag(table))/nTst
-error
 ```
-On obtient l'erreur 0.08.
+On obtient l'erreur 0.09.
 
 ###3.4.3 Random Forest
-```{r}
+```{r  message=FALSE, warning=FALSE,eval=FALSE}
 #m = sqrt(p) = p/2 
 rdForest_data = randomForest(y~., data=trainFDA,mtry=2)
 ypred = predict(rdForest_data, newdata=testFDA, type = 'response')
-table<-table(ypred, testFDA$y)
-error<-1-sum(diag(table))/nTst
-error
 ```
 
 On obtient l'erreur 0.08. Ici on prend mtry = sqrt(p) = p/2 = 2.
@@ -671,23 +590,21 @@ On obtient l'erreur 0.08. Ici on prend mtry = sqrt(p) = p/2 = 2.
 
 ##3.5 Support Vector Machine
 
-```{r}
+```{r  message=FALSE, warning=FALSE,eval=FALSE}
 #install.packages("e1071")
 library(e1071)
 
 #Kernel = radial
-tune.out = tune(svm, y~., data = trainFDA, kernel = "radial", range = list(cost=c(0.01, 0.1, 1, 10, 100), gamma = c(0.1, 1, 10)))
+tune.out = tune(svm, y~., data = trainFDA, kernel = "radial", 
+                range = list(cost=c(0.01, 0.1, 1, 10, 100), 
+                             gamma = c(0.1, 1, 10)))
 summary(tune.out)
 
-svm_data<-svm(y~., data = trainFDA, kernel = "radial", gamma = 0.1, cost = 1)
+svm_data<-svm(y~., data = trainFDA, kernel = "radial", gamma = 0.1, cost = 0.1)
 ypred = predict(svm_data, newdata=testFDA)
-table<-table(ypred, testFDA$y)
-table
-error<-1-sum(diag(table))/nTst
-error
 ```
 
-On obtient l'erreur 0.087 pour un cout de 1 et un gamma de 0.1.
+On obtient l'erreur 0.08 pour un cout de 0.1 et un gamma de 0.1.
 
 Le classifieur Bayésien naïf est donc le meilleur pour "parole". Il faut néanmoins noter que globalement, toutes les méthodes ont donné de bon résultats sur ce jeu de données.
 
