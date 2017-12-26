@@ -137,7 +137,7 @@ table<-table(testFDA$y,pred$class)
 error<-1-sum(diag(table))/nTst
 ```
 
-Le taux d'erreur est 0.18. Il est relativement proche de celui obtenu avec la LDA. Son erreur est comprise entre l'erreur de LDA(0.14) et QDA(0.4). Ceci est normal puisque Analyse discriminante régularisée est une régularisation entre LDA et QDA.
+Le taux d'erreur est 0.18. Il est relativement proche de celui obtenu avec la LDA. Son erreur est comprise entre l'erreur de LDA(0.14) et QDA(0.4). Ceci est normal puisque l'analyse discriminante régularisée est un compromis entre la LDA et la QDA.
 
 ##1.3 Régression Logistique et modèles additifs généralisés (GLM & GAM)
 
@@ -244,7 +244,7 @@ On obtient l'erreur 0.22.
 
 Le classifieur obtenu par LDA est donc le meilleur pour "expressions".
 
-Pour les données suivantes, nous ne préciserons plus les codes pour calculer les test erreurs en raison de la contrainte sur la taille de rapport.
+Pour les données suivantes, nous ne préciserons plus les codes pour calculer les erreurs de test en raison de la contrainte sur la taille du rapport.
 
 #2 Données characters_train.txt
 
@@ -283,7 +283,7 @@ for (i in (1:10)){
 }
 plot(nbvoisin,error,xlab="Nombre de voisin pris pour apprentissage",ylab="Erreur estimée")
 ```
-Nous obtenons, par cross validation, une erreur minimale de 0.0784. Elle correspond cependant à 1 seul voisin. Pour les data_characteurs on a 17 prédicteurs et 10000 obsercations (p<<N). Donc c'est normal que la méthode avec plus de flexibilité (k = 1) est plus performante.
+Nous obtenons, par cross validation, une erreur minimale de 0.0784. Elle correspond cependant à 1 seul voisin. Pour les data_characteurs on a 17 prédicteurs et 10000 obsercations (p<<N). Donc c'est normal que la méthode avec le plus de flexibilité (k = 1) soit la plus performante.
 
 ##2.2 Analyse Discriminante
 
@@ -393,7 +393,7 @@ C'est jusqu'a maintenant le meilleur résultat obtenu, même si celui du bagging
 
 ##2.6 Support Vector Machine
 
-L'execution de la fonction tune est trop longue. On n'a pas pu run la fonction tune suffisamment longtemps pour obtenir un résultat.
+L'execution de la fonction tune est trop longue. Nous n'avons pas pu run la fonction tune suffisamment longtemps pour obtenir un résultat.
 
 Donc le classifieur obtenu par Random Forest est le meilleur pour "characters".
 
@@ -506,7 +506,7 @@ pred<-predict(naivB_data,newdata=testFDA)
 ```
 Nous obtenons un taux d'erreur de 0.07. 
 
-L'erreurs de QDA, LDA et Bayésien naif sont très proches. Donc on peut déduire que les matrices de covariance de chaque class sont similaires et diagonales.
+L'erreurs de QDA, LDA et Bayésien naif sont très proches. Donc on peut déduire que les matrices de covariance de chaque classe sont similaires et diagonales.
 
 ###3.2.4 Analyse discriminante régularisée
 ```{r  message=FALSE, warning=FALSE,eval=FALSE}
